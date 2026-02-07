@@ -1,0 +1,22 @@
+{
+    "id": 119,
+    "group_id": 2,
+    "kepengurusan_id": null,
+    "period_name": "Oktober 2024",
+    "period_start": "2024-09-30T17:00:00.000000Z",
+    "period_end": "2024-10-03T17:00:00.000000Z",
+    "previous_cash_balance": "18000000.00",
+    "total_installments": "15750000.00",
+    "total_amount": "33750000.00",
+    "shu_amount": "500000.00",
+    "available_funds": "33250000.00",
+    "remaining_cash": "9750000.00",
+    "access_code": null,
+    "management_id": null,
+    "bid_deadline": null,
+    "motor_slots": 1,
+    "notes": null,
+    "status": "completed",
+    "created_at": "2026-01-21T07:08:37.000000Z",
+    "updated_at": "2026-01-21T07:12:55.000000Z"
+}

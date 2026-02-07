@@ -1,0 +1,37 @@
+# START MultiPHP Version
+<FilesMatch "\.(php4|php5|php3|php2|php|phtml)$">
+    SetHandler application/x-httpd-alt-php82___lsphp
+</FilesMatch>
+# END MultiPHP Version
+
+# PHP Configuration
+<IfModule mod_php.c>
+    php_value memory_limit 512M
+    php_value max_execution_time 300
+    php_value upload_max_filesize 64M
+    php_value post_max_size 64M
+    php_value max_input_time 300
+    php_value max_input_vars 5000
+</IfModule>
+
+<IfModule mod_suphp.c>
+    suPHP_ConfigPath /home/username/public_html
+    <Files php.ini>
+        order allow,deny
+        deny from all
+    </Files>
+</IfModule>
+
+# --- PERBAIKAN CSP (CONTENT SECURITY POLICY) ---
+<IfModule mod_headers.c>
+    Header set Content-Security-Policy "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://html2canvas.hertzen.com;"
+</IfModule>
+
+# Rewrite Engine untuk Laravel
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Pastikan tidak mengulang-ulang (loop) jika request sudah menuju folder public
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
