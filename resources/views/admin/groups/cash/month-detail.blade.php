@@ -214,11 +214,7 @@
                                 <div class="card bg-primary text-white h-100">
                                     <div class="card-body text-center d-flex flex-column justify-content-center">
                                         <i class="fas fa-coins fa-2x mb-2"></i>
-                                        @if(($calAccumulation ?? 0) <= 0)
-                                            <h5 class="mb-0">-</h5>
-                                        @else
                                             <h5 class="mb-0">Rp {{ number_format($calAccumulation, 0, ',', '.') }}</h5>
-                                        @endif
                                         <small>Akumulasi Kas</small>
                                     </div>
                                 </div>
@@ -523,11 +519,7 @@
                                             </div>
                                             <div class="col-md-3">
                                                 <small class="text-muted">Sisa Kas Bulan Ini:</small>
-                                                @if(($calTotalRunningCash ?? 0) <= 0)
-                                                    <h5 class="text-primary">-</h5>
-                                                @else
                                                     <h5 class="text-primary">Rp {{ number_format($calTotalRunningCash, 0, ',', '.') }}</h5>
-                                                @endif
                                             </div>
                                         </div>
                                         <div class="row mt-3">
@@ -541,11 +533,7 @@
                                             </div>
                                             <div class="col-md-3">
                                                 <small class="text-muted">Akumulasi Kas:</small>
-                                                @if(($calTotalRunningCash ?? 0) <= 0)
-                                                    <h5 class="text-primary">-</h5>
-                                                @else
                                                     <h5 class="text-primary">Rp {{ number_format($calTotalRunningCash, 0, ',', '.') }}</h5>
-                                                @endif
                                             </div>
                                             <div class="col-md-3">
                                                 <small class="text-muted">Jumlah Setoran:</small>

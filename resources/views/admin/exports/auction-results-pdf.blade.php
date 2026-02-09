@@ -97,7 +97,7 @@
                 <td style="text-align: center;">{{ $result['lottery_number'] }}</td>
                 <td>{{ $result['participant_name'] }}</td>
                 <td>
-                    {{ $result['department'] ?? '-' }} / {{ $result['shift'] }}
+                    {{ $result['shift'] }}
                 </td>
                 <td>{{ $result['nik'] }}</td>
                 <td class="amount">Rp {{ number_format($result['bid_amount'], 0, ',', '.') }}</td>

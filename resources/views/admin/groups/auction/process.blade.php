@@ -129,6 +129,70 @@
                         @endif
 
                         @if($periodWithBids)
+                        
+                        @if($periodWithBids->status === 'completed' && $periodWithBids->winners->count() > 0)
+                        <div class="card mb-4 border-success shadow-sm">
+                            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-trophy me-2"></i>
+                                    Daftar Pemenang Periode Ini
+                                </h5>
+                                <span class="badge bg-white text-success">
+                                    {{ $periodWithBids->winners->count() }} Pemenang
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>No Undian</th>
+                                                <th>Nama Pemenang</th>
+                                                <th class="text-end">Nilai Bid</th>
+                                                <th class="text-end">Hadiah Akhir (Diterima)</th>
+                                                <th class="text-center">Waktu Menang</th>
+                                                <th class="text-center">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($periodWithBids->winners as $winner)
+                                            <tr>
+                                                <td><span class="badge bg-primary">{{ $winner->participant->lottery_number }}</span></td>
+                                                <td>
+                                                    <strong>{{ $winner->participant->name }}</strong>
+                                                    <div class="small text-muted">{{ $winner->participant->nik }} | {{ $winner->participant->shift }}</div>
+                                                </td>
+                                                <td class="text-end fw-bold text-primary">Rp {{ number_format($winner->bid_amount, 0, ',', '.') }}</td>
+                                                <td class="text-end fw-bold text-success">Rp {{ number_format($winner->final_prize, 0, ',', '.') }}</td>
+                                                <td class="text-center"><small class="text-muted">{{ $winner->draw_time ? $winner->draw_time->format('d/m/Y H:i') : '-' }}</small></td>
+                                                <td class="text-center">
+                                                    @if($winner->bid_id)
+                                                        <a href="{{ route('admin.bids.show', $winner->bid_id) }}" class="btn btn-sm btn-info shadow-sm">
+                                                            <i class="fas fa-eye me-1"></i>Lihat Detail
+                                                        </a>
+                                                    @else
+                                                        <span class="text-muted small">Tanpa Bid (Undian)</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        @endif
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list me-2 text-primary"></i>
+                                {{ $periodWithBids->status === 'completed' ? 'Riwayat Lelang' : 'Daftar Lelang Berjalan' }}
+                            </h5>
+                            @if($periodWithBids->status !== 'completed')
+                                <span class="badge bg-primary">{{ $periodWithBids->bids->count() }} Peserta Bid</span>
+                            @endif
+                        </div>
+                        
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
                                 <thead class="table-dark">

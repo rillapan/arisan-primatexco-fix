@@ -2221,30 +2221,45 @@ class AdminController extends Controller
         $previousMonthRemainingCash = null;
         $monthInstallments = 0;
         
-        // Check if a specific period is selected
         if (request()->has('period_id') && request('period_id')) {
+            $periodId = request('period_id');
             $periodWithBids = MonthlyPeriod::with([
                 'group',
-                'bids' => function($query) {
-                    $query->whereHas('participant', function($q) {
-                        $q->where('is_active', true)->where('has_won', false);
+                'bids' => function($query) use ($periodId) {
+                    $query->whereHas('participant', function($q) use ($periodId) {
+                        $q->where('is_active', true)
+                          ->where(function($sub) use ($periodId) {
+                              $sub->where('has_won', false)
+                                  ->orWhereHas('winner', function($w) use ($periodId) {
+                                      $w->where('monthly_period_id', $periodId);
+                                  });
+                          });
                     })->where('bid_amount', '>', 0)->with('participant')->orderBy('bid_amount', 'desc');
                 },
-                'winners.participant'
-            ])->findOrFail(request('period_id'));
+                'winners.participant',
+                'winners.bid'
+            ])->findOrFail($periodId);
         } else {
             // Default to current period (first non-completed period)
             $currentPeriod = $group->monthlyPeriods->where('status', '!=', 'completed')->first();
             if ($currentPeriod) {
+                $periodId = $currentPeriod->id;
                 $periodWithBids = MonthlyPeriod::with([
                     'group',
-                    'bids' => function($query) {
-                        $query->whereHas('participant', function($q) {
-                            $q->where('is_active', true)->where('has_won', false);
+                    'bids' => function($query) use ($periodId) {
+                        $query->whereHas('participant', function($q) use ($periodId) {
+                            $q->where('is_active', true)
+                              ->where(function($sub) use ($periodId) {
+                                  $sub->where('has_won', false)
+                                      ->orWhereHas('winner', function($w) use ($periodId) {
+                                          $w->where('monthly_period_id', $periodId);
+                                      });
+                              });
                         })->where('bid_amount', '>', 0)->with('participant')->orderBy('bid_amount', 'desc');
                     },
-                    'winners.participant'
-                ])->findOrFail($currentPeriod->id);
+                    'winners.participant',
+                    'winners.bid'
+                ])->findOrFail($periodId);
             }
         }
 

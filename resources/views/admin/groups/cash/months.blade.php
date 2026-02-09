@@ -134,19 +134,11 @@
                                                                 </div>
                                                                 <div class="col-6">
                                                                     <small class="text-muted d-block">Sisa:</small> 
-                                                                    @if($monthData['net_surplus'] <= 0)
-                                                                        <span class="fw-bold text-muted">-</span>
-                                                                    @else
-                                                                        <span class="fw-bold text-primary">Rp {{ number_format($monthData['net_surplus'], 0, ',', '.') }}</span>
-                                                                    @endif
+                                                                    <span class="fw-bold text-primary">Rp {{ number_format($monthData['net_surplus'], 0, ',', '.') }}</span>
                                                                 </div>
                                                                 <div class="col-12 mt-2">
                                                                     <small class="text-muted">Akumulasi:</small> 
-                                                                    @if($monthData['accumulation'] <= 0)
-                                                                        <span class="fw-bold text-muted">-</span>
-                                                                    @else
-                                                                        <span class="fw-bold text-info">Rp {{ number_format($monthData['accumulation'], 0, ',', '.') }}</span>
-                                                                    @endif
+                                                                    <span class="fw-bold text-info">Rp {{ number_format($monthData['accumulation'], 0, ',', '.') }}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
