@@ -191,14 +191,10 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
     Route::put('/saksi/{id}', [AdminController::class, 'updateKepengurusan'])->name('saksi.update');
     Route::delete('/saksi/{id}', [AdminController::class, 'deleteKepengurusan'])->name('saksi.delete');
     
-    // Documentation management
-    Route::get('/groups/{groupId}/documentations', [\App\Http\Controllers\Admin\DocumentationController::class, 'index'])->name('groups.documentations.index');
-    Route::get('/groups/{groupId}/documentations/create', [\App\Http\Controllers\Admin\DocumentationController::class, 'create'])->name('groups.documentations.create');
-    Route::post('/groups/{groupId}/documentations', [\App\Http\Controllers\Admin\DocumentationController::class, 'store'])->name('groups.documentations.store');
-    Route::get('/documentations/{id}/edit', [\App\Http\Controllers\Admin\DocumentationController::class, 'edit'])->name('documentations.edit');
-    Route::put('/documentations/{id}', [\App\Http\Controllers\Admin\DocumentationController::class, 'update'])->name('documentations.update');
-    Route::delete('/documentations/{id}', [\App\Http\Controllers\Admin\DocumentationController::class, 'destroy'])->name('documentations.destroy');
-    Route::get('/documentations/{id}/download', [\App\Http\Controllers\Admin\DocumentationController::class, 'download'])->name('documentations.download');
+    // Drive Link (Global - 1 link untuk semua)
+    Route::get('/drive-link', [\App\Http\Controllers\Admin\DocumentationController::class, 'index'])->name('drive-link.index');
+    Route::post('/drive-link', [\App\Http\Controllers\Admin\DocumentationController::class, 'store'])->name('drive-link.store');
+    Route::delete('/drive-link', [\App\Http\Controllers\Admin\DocumentationController::class, 'destroy'])->name('drive-link.destroy');
 
     
     // Kelola Jabatan (Integrated in Profile)
@@ -247,12 +243,11 @@ Route::prefix('participant')->name('participant.')->middleware('auth:participant
     Route::get('/auction/{periodId}', [ParticipantController::class, 'viewAuction'])->name('auction.view');
     Route::get('/bukti-angsuran', [ParticipantController::class, 'buktiAngsuran'])->name('bukti.angsuran');
     Route::get('/payments/{paymentId}/receipt', [ParticipantController::class, 'viewReceipt'])->name('participant.receipt');
-    Route::get('/periods/{periodId}/documentations', [\App\Http\Controllers\Admin\DocumentationController::class, 'showForParticipant'])->name('periods.documentations');
+    Route::get('/drive-link', [\App\Http\Controllers\Admin\DocumentationController::class, 'showForParticipant'])->name('drive-link');
     Route::post('/switch-account/{id}', [ParticipantController::class, 'switchAccount'])->name('switch-account');
     Route::get('/hubungi-kami', [ParticipantController::class, 'hubungiKami'])->name('hubungi-kami');
     Route::get('/kta', [ParticipantController::class, 'kta'])->name('kta');
     Route::get('/kta/download', [ParticipantController::class, 'downloadKta'])->name('kta.download');
-    Route::get('/documentations', [ParticipantController::class, 'documentations'])->name('documentations');
     
     // DEBUG ROUTE
     Route::get('/debug-password', [ParticipantController::class, 'debugPasswordForm'])->name('debug.password');

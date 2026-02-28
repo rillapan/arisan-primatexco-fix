@@ -149,10 +149,10 @@
             </a>
         </div>
         <div class="col">
-            <a href="{{ route('participant.documentations') }}" class="btn btn-outline-secondary w-100 py-3 h-100 d-flex flex-column align-items-center justify-content-center shadow-sm px-1">
-                <i class="fas fa-images fa-lg mb-2"></i>
-                <span class="fw-bold d-none d-md-inline" style="font-size: 0.85rem;">Dokumentasi</span>
-                <span class="fw-bold d-md-none" style="font-size: 0.7rem;">Galeri</span>
+            <a href="{{ route('participant.drive-link') }}" class="btn btn-outline-secondary w-100 py-3 h-100 d-flex flex-column align-items-center justify-content-center shadow-sm px-1">
+                <i class="fab fa-google-drive fa-lg mb-2"></i>
+                <span class="fw-bold d-none d-md-inline" style="font-size: 0.85rem;">Link Drive</span>
+                <span class="fw-bold d-md-none" style="font-size: 0.7rem;">Drive</span>
             </a>
         </div>
     </div>
@@ -533,8 +533,8 @@
                                 </a>
                             @endif
 
-                            <a href="{{ route('participant.periods.documentations', $period->id) }}" class="btn btn-outline-secondary btn-sm flex-grow-1">
-                                <i class="fas fa-camera-retro me-1"></i>Dokumentasi
+                            <a href="{{ route('participant.drive-link') }}" class="btn btn-outline-secondary btn-sm flex-grow-1">
+                                <i class="fab fa-google-drive me-1"></i>Drive
                             </a>
 
                             <!-- Financial Detail Button -->

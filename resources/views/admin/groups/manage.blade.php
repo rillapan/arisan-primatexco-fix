@@ -347,13 +347,13 @@
             </div>
 
             <div class="col">
-                <a href="{{ route('admin.groups.documentations.index', $group->id) }}" class="card action-card text-decoration-none p-3 h-100">
+                <a href="{{ route('admin.drive-link.index') }}" class="card action-card text-decoration-none p-3 h-100">
                     <div class="text-center">
-                        <div class="icon-wrapper bg-primary-soft mb-2" style="background-color: rgba(133, 135, 150, 0.1); color: #858796;">
-                            <i class="fas fa-camera-retro fa-lg"></i>
+                        <div class="icon-wrapper bg-primary-soft mb-2" style="background-color: rgba(28, 200, 138, 0.1); color: #1cc88a;">
+                            <i class="fab fa-google-drive fa-lg"></i>
                         </div>
-                        <h6 class="font-weight-bold text-dark mb-1">Dokumentasi</h6>
-                        <small class="text-muted d-block">Foto & Video Arisan</small>
+                        <h6 class="font-weight-bold text-dark mb-1">Link Drive</h6>
+                        <small class="text-muted d-block">Dokumentasi Google Drive</small>
                     </div>
                 </a>
             </div>
