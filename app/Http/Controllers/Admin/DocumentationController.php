@@ -14,7 +14,9 @@ class DocumentationController extends Controller
 {
     public function index($groupId)
     {
-        $group = Group::with(['monthlyPeriods.documentations'])->findOrFail($groupId);
+        $group = Group::with(['monthlyPeriods' => function ($query) {
+            $query->orderBy('period_start', 'desc');
+        }, 'monthlyPeriods.documentations'])->findOrFail($groupId);
         return view('admin.documentations.index', compact('group'));
     }
 

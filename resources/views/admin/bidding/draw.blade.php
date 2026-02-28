@@ -610,7 +610,93 @@
             canvas.height = size;
         }
 
+        // ── Audio Setup ──────────────────────────────────────────────────────
+        // Coba pakai file MP3 dari storage. Jika gagal, fallback ke Web Audio API.
         const spinAudio = new Audio('{{ asset('storage/spinning-wheel.mp3') }}');
+        spinAudio.loop = true;
+        spinAudio.preload = 'auto';
+
+        let mp3Ready = false;
+        spinAudio.addEventListener('canplaythrough', () => { mp3Ready = true; });
+        spinAudio.addEventListener('error', () => {
+            mp3Ready = false;
+            console.warn('File spinning-wheel.mp3 tidak ditemukan, pakai Web Audio API sebagai fallback.');
+        });
+
+        // Web Audio API — fallback jika file MP3 tidak ada
+        let audioCtx = null;
+        let spinningNoiseNode = null;
+        let gainNode = null;
+
+        function initAudioCtx() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSpinSound() {
+            if (mp3Ready) {
+                // ── Pakai file MP3 ──
+                spinAudio.currentTime = 0;
+                spinAudio.play().catch(() => playWebAudio());
+            } else {
+                // ── Fallback: Web Audio API ──
+                playWebAudio();
+            }
+        }
+
+        function stopSpinSound() {
+            // Stop MP3
+            if (!spinAudio.paused) {
+                spinAudio.pause();
+                spinAudio.currentTime = 0;
+            }
+            // Stop Web Audio
+            try {
+                if (spinningNoiseNode) {
+                    spinningNoiseNode.stop();
+                    spinningNoiseNode.disconnect();
+                    spinningNoiseNode = null;
+                }
+                if (gainNode) {
+                    gainNode.disconnect();
+                    gainNode = null;
+                }
+            } catch(e) {}
+        }
+
+        function playWebAudio() {
+            try {
+                initAudioCtx();
+                stopSpinSound();
+
+                const bufferSize = audioCtx.sampleRate * 2;
+                const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+                spinningNoiseNode = audioCtx.createBufferSource();
+                spinningNoiseNode.buffer = noiseBuffer;
+                spinningNoiseNode.loop = true;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(800, audioCtx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 8);
+                filter.Q.value = 1.5;
+
+                gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.05, audioCtx.currentTime + 13);
+
+                spinningNoiseNode.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                spinningNoiseNode.start();
+            } catch(e) {
+                console.log('Web Audio juga tidak tersedia:', e);
+            }
+        }
 
         function drawWheel() {
             const canvas = document.getElementById('wheelCanvas');
@@ -721,8 +807,7 @@
             spinnerWheel.style.transition = 'transform 15s cubic-bezier(0.2, 0.5, 0.1, 1)';
             
             // Play Audio
-            spinAudio.currentTime = 0;
-            spinAudio.play().catch(e => console.log('Audio play failed:', e));
+            playSpinSound();
             
             // Determine random rotation
             // We want it to spin for 15 seconds.
@@ -769,8 +854,7 @@
                 }
                 
                 // Stop Audio
-                spinAudio.pause();
-                spinAudio.currentTime = 0;
+                stopSpinSound();
                 
                 // Store the final rotation for next spin
                 spinnerWheel.style.transition = 'none';

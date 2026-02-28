@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload & Test Audio - Spinning Wheel</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            min-height: 100vh;
+            background: #0f0f1a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 40px 20px;
+            gap: 28px;
+        }
+
+        h2 { font-size: 24px; text-align: center; }
+        .subtitle { color: #888; font-size: 13px; text-align: center; margin-top: -18px; }
+
+        /* ── UPLOAD ZONE ── */
+        .upload-zone {
+            width: 100%;
+            max-width: 600px;
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 20px;
+            padding: 36px 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s;
+            background: rgba(255,255,255,0.03);
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #e53935;
+            background: rgba(229,57,53,0.08);
+        }
+        .upload-zone .icon { font-size: 48px; margin-bottom: 12px; }
+        .upload-zone .label { font-size: 16px; font-weight: bold; margin-bottom: 6px; }
+        .upload-zone .hint { color: #888; font-size: 13px; }
+        #fileInput { display: none; }
+
+        /* ── FILE INFO ── */
+        .file-info {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 16px 20px;
+            display: none;
+            align-items: center;
+            gap: 14px;
+        }
+        .file-info .fi-icon { font-size: 30px; }
+        .file-info .fi-name { font-size: 14px; font-weight: bold; color: #ff8a80; word-break: break-all; }
+        .file-info .fi-size { font-size: 12px; color: #888; }
+
+        /* ── PLAYER ── */
+        .player-section {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 20px;
+            padding: 24px;
+            display: none;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .player-title { font-size: 15px; font-weight: bold; color: #ccc; margin-bottom: 2px; }
+
+        audio {
+            width: 100%;
+            border-radius: 10px;
+            accent-color: #e53935;
+        }
+
+        /* ── GUIDE ── */
+        .guide {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(255,193,7,0.08);
+            border: 1px solid rgba(255,193,7,0.3);
+            border-radius: 16px;
+            padding: 20px 24px;
+        }
+        .guide h4 { color: #ffc107; margin-bottom: 12px; font-size: 15px; }
+        .guide ol { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+        .guide li { font-size: 13px; color: #ccc; line-height: 1.6; }
+        .guide code {
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #ff8a80;
+            word-break: break-all;
+        }
+
+        .badge-ok {
+            display: inline-block;
+            background: #2e7d32;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge-warn {
+            display: inline-block;
+            background: #e65100;
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>🎵 Upload & Preview Audio</h2>
+    <p class="subtitle">Upload file MP3 untuk preview, lalu pindahkan ke folder server</p>
+
+    <!-- Upload Zone -->
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">📂</div>
+        <div class="label">Klik atau Drag & Drop file audio di sini</div>
+        <div class="hint">Format yang didukung: MP3, WAV, OGG, AAC</div>
+    </div>
+    <input type="file" id="fileInput" accept="audio/*">
+
+    <!-- File Info -->
+    <div class="file-info" id="fileInfo">
+        <div class="fi-icon">🎵</div>
+        <div>
+            <div class="fi-name" id="fiName">-</div>
+            <div class="fi-size" id="fiSize">-</div>
+        </div>
+    </div>
+
+    <!-- Player -->
+    <div class="player-section" id="playerSection">
+        <div class="player-title">▶ Preview Audio</div>
+        <audio id="audioPlayer" controls></audio>
+    </div>
+
+    <!-- Guide -->
+    <div class="guide">
+        <h4>📋 Cara Upload ke Server Laravel</h4>
+        <ol>
+            <li>
+                Setelah preview cocok, <strong>simpan file audio Anda</strong> dengan nama:<br>
+                <code>spinning-wheel.mp3</code>
+            </li>
+            <li>
+                Copy/pindahkan file ke folder:<br>
+                <code>storage/app/public/spinning-wheel.mp3</code>
+            </li>
+            <li>
+                Pastikan sudah ada <strong>storage link</strong>. Jika belum, jalankan:<br>
+                <code>php artisan storage:link</code>
+            </li>
+            <li>
+                File bisa diakses di:<br>
+                <code>http://localhost:8000/storage/spinning-wheel.mp3</code>
+            </li>
+            <li>
+                <span class="badge-ok">✓ Selesai</span> &nbsp; Halaman undian akan otomatis menggunakan file MP3 Anda.
+            </li>
+        </ol>
+    </div>
+
+    <script>
+        const uploadZone  = document.getElementById('uploadZone');
+        const fileInput   = document.getElementById('fileInput');
+        const fileInfo    = document.getElementById('fileInfo');
+        const playerSection = document.getElementById('playerSection');
+        const audioPlayer = document.getElementById('audioPlayer');
+
+        // Drag & Drop
+        uploadZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) loadFile(file);
+        });
+
+        fileInput.addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) loadFile(file);
+        });
+
+        function loadFile(file) {
+            if (!file.type.startsWith('audio/')) {
+                alert('⚠️ File yang dipilih bukan file audio!');
+                return;
+            }
+
+            // Tampilkan info file
+            document.getElementById('fiName').textContent = file.name;
+            document.getElementById('fiSize').textContent = formatSize(file.size);
+            fileInfo.style.display = 'flex';
+
+            // Load ke audio player
+            const url = URL.createObjectURL(file);
+            audioPlayer.src = url;
+            playerSection.style.display = 'flex';
+            audioPlayer.play();
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1048576).toFixed(2) + ' MB';
+        }
+    </script>
+</body>
+</html>

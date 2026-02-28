@@ -6,6 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Sistem Arisan Admin')</title>
     <link rel="icon" type="image/png" href="{{ asset('img/logo.png') }}">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <meta name="theme-color" content="#2c3e50">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -453,6 +455,10 @@
                     SISTEM ARISAN PRIMKOPKAR PRIMA
                 </a>
             </div>
+            <!-- Custom PWA Install Button -->
+            <button id="pwaInstallBtn" class="btn btn-warning btn-sm d-none">
+                <i class="fas fa-download me-1"></i> Instal Aplikasi
+            </button>
         </div>
     </nav>
 
@@ -517,6 +523,54 @@
                 }
             }
         });
+    </script>
+    <script>
+        let deferredPrompt;
+        const installBtn = document.getElementById('pwaInstallBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            // Update UI notify the user they can install the PWA
+            if (installBtn) {
+                installBtn.classList.remove('d-none');
+            }
+        });
+
+        if (installBtn) {
+            installBtn.addEventListener('click', (e) => {
+                // hide our user interface that shows our A2HS button
+                installBtn.classList.add('d-none');
+                // Show the prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the A2HS prompt');
+                    } else {
+                        console.log('User dismissed the A2HS prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            });
+        }
+
+        window.addEventListener('appinstalled', (evt) => {
+            console.log('PWA was installed');
+            if (installBtn) {
+                installBtn.classList.add('d-none');
+            }
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered', reg))
+                    .catch(err => console.log('Service Worker registration failed', err));
+            });
+        }
     </script>
     @stack('scripts')
 </body>

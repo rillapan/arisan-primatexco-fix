@@ -3,6 +3,8 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="manifest" href="{{ asset('manifest.json') }}">
+        <meta name="theme-color" content="#2c3e50">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
@@ -45,6 +47,10 @@
                                 Register
                             </a>
                         @endif
+                        <!-- Custom PWA Install Button -->
+                        <button id="pwaInstallBtn" class="inline-block px-5 py-1.5 bg-yellow-400 text-black border border-yellow-500 rounded-sm text-sm leading-normal d-none cursor-pointer">
+                            <i class="fas fa-download me-1"></i> Instal Aplikasi
+                        </button>
                     @endauth
                 </nav>
             @endif
@@ -273,5 +279,47 @@
         @if (Route::has('login'))
             <div class="h-14.5 hidden lg:block"></div>
         @endif
+        <script>
+            let deferredPrompt;
+            const installBtn = document.getElementById('pwaInstallBtn');
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                if (installBtn) {
+                    installBtn.classList.remove('d-none');
+                }
+            });
+
+            if (installBtn) {
+                installBtn.addEventListener('click', (e) => {
+                    installBtn.classList.add('d-none');
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('User accepted the A2HS prompt');
+                        } else {
+                            console.log('User dismissed the A2HS prompt');
+                        }
+                        deferredPrompt = null;
+                    });
+                });
+            }
+
+            window.addEventListener('appinstalled', (evt) => {
+                console.log('PWA was installed');
+                if (installBtn) {
+                    installBtn.classList.add('d-none');
+                }
+            });
+
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(reg => console.log('Service Worker registered', reg))
+                        .catch(err => console.log('Service Worker registration failed', err));
+                });
+            }
+        </script>
     </body>
 </html>
