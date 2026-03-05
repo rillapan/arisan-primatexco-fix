@@ -103,25 +103,6 @@
         border-radius: 6px;
         margin-bottom: 5px;
     }
-    .kta-footer {
-        text-align: right;
-        width: 100%;
-    }
-    .kta-signature-img {
-        height: 35px;
-        max-width: 100px;
-        object-fit: contain;
-        margin-bottom: 2px;
-    }
-    .kta-signature-name {
-        font-size: 10px;
-        font-weight: 700;
-        color: #212529;
-        text-transform: uppercase;
-        line-height: 1.1;
-        word-wrap: break-word;
-        max-width: 120px;
-    }
 
     .kta-back {
         background-color: #fff;
@@ -183,9 +164,6 @@
         .kta-right {
             width: 100px;
         }
-        .kta-signature-img {
-            height: 30px;
-        }
     }
 </style>
 @endpush
@@ -229,12 +207,6 @@
                 <div class="kta-right">
                     <div class="kta-qr">
                         <div id="qrcode"></div>
-                    </div>
-                    <div class="kta-footer">
-                        @if($setting->signature_image)
-                            <img src="{{ asset('uploads/kta/' . $setting->signature_image) }}" class="kta-signature-img">
-                        @endif
-                        <div class="kta-signature-name">{{ $setting->signature_name ?? 'TTD PENGURUS' }}</div>
                     </div>
                 </div>
             </div>

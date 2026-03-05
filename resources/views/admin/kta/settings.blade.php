@@ -46,28 +46,7 @@
                             @enderror
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <label for="signature_name" class="form-label fw-bold">Nama Penandatangan <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control @error('signature_name') is-invalid @enderror" id="signature_name" name="signature_name" value="{{ old('signature_name', $setting->signature_name) }}" placeholder="Contoh: Ketua Paguyuban" required>
-                                @error('signature_name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6 mb-4">
-                                <label for="signature_image" class="form-label fw-bold">Gambar TTD</label>
-                                @if($setting->signature_image)
-                                    <div class="mb-2">
-                                        <img src="{{ asset('uploads/kta/' . $setting->signature_image) }}" class="img-thumbnail" style="max-height: 80px;">
-                                    </div>
-                                @endif
-                                <input type="file" class="form-control @error('signature_image') is-invalid @enderror" id="signature_image" name="signature_image" accept="image/*">
-                                <div class="form-text mt-1">Format: jpeg, png, jpg. Max: 2MB.</div>
-                                @error('signature_image')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
+
 
                         <div class="mb-4">
                             <label for="vision" class="form-label fw-bold">Visi <span class="text-danger">*</span></label>
@@ -113,7 +92,7 @@
                     </p>
                     <ul class="small text-muted ps-3">
                         <li class="mb-2">Gunakan logo dengan latar belakang transparan (PNG) untuk hasil terbaik.</li>
-                        <li class="mb-2">TTD dapat berupa coretan ttd atau stempel resmi.</li>
+
                         <li class="mb-2">Visi & Misi akan ditampilkan pada sisi belakang kartu.</li>
                     </ul>
                 </div>

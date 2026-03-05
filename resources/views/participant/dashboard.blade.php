@@ -126,7 +126,7 @@
             <a href="{{ route('participant.bukti.angsuran') }}" class="btn btn-outline-info w-100 py-3 h-100 d-flex flex-column align-items-center justify-content-center shadow-sm position-relative px-1">
                 <i class="fas fa-file-invoice fa-lg mb-2 {{ $hasUnread ? 'animate__animated animate__swing animate__infinite infinite' : '' }}"></i>
                 <span class="fw-bold d-none d-md-inline" style="font-size: 0.85rem;">Bukti Angsuran</span>
-                <span class="fw-bold d-md-none" style="font-size: 0.7rem;">Bukti</span>
+                <span class="fw-bold d-md-none" style="font-size: 0.7rem;">Angsuran</span>
                 @if($hasUnread)
                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
                         {{ $unreadBuktiAngsuranCount }}
@@ -151,8 +151,8 @@
         <div class="col">
             <a href="{{ route('participant.drive-link') }}" class="btn btn-outline-secondary w-100 py-3 h-100 d-flex flex-column align-items-center justify-content-center shadow-sm px-1">
                 <i class="fab fa-google-drive fa-lg mb-2"></i>
-                <span class="fw-bold d-none d-md-inline" style="font-size: 0.85rem;">Link Drive</span>
-                <span class="fw-bold d-md-none" style="font-size: 0.7rem;">Drive</span>
+                <span class="fw-bold d-none d-md-inline" style="font-size: 0.85rem;">Dokumentasi</span>
+                <span class="fw-bold d-md-none" style="font-size: 0.7rem;">Dokumentasi</span>
             </a>
         </div>
     </div>

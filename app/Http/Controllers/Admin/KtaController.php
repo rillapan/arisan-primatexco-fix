@@ -22,15 +22,13 @@ class KtaController extends Controller
             'header_title' => 'required|string|max:255',
             'moto' => 'nullable|string|max:255',
             'logo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'signature_name' => 'required|string|max:255',
-            'signature_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'vision' => 'required|string',
             'mission' => 'required|string',
         ]);
 
         $setting = KtaSetting::first() ?? new KtaSetting();
         
-        $data = $request->only(['header_title', 'moto', 'signature_name', 'vision', 'mission']);
+        $data = $request->only(['header_title', 'moto', 'vision', 'mission']);
 
         if ($request->hasFile('logo')) {
             if ($setting->logo) {
@@ -53,26 +51,7 @@ class KtaController extends Controller
             $data['logo'] = $logoName;
         }
 
-        if ($request->hasFile('signature_image')) {
-            if ($setting->signature_image) {
-                $oldPath = public_path('uploads/kta/' . $setting->signature_image);
-                if (File::exists($oldPath)) File::delete($oldPath);
-            }
-            $signature = $request->file('signature_image');
-            $signatureName = 'signature_' . time() . '.webp';
-            
-            if (!file_exists(public_path('uploads/kta'))) {
-                mkdir(public_path('uploads/kta'), 0777, true);
-            }
-            
-            // Process image: convert to WebP
-            $imageManager = new \Intervention\Image\ImageManager(
-                new \Intervention\Image\Drivers\Gd\Driver()
-            );
-            $image = $imageManager->read($signature->getPathname())->toWebp(80);
-            file_put_contents(public_path('uploads/kta/' . $signatureName), (string) $image);
-            $data['signature_image'] = $signatureName;
-        }
+
 
         if ($setting->exists) {
             $setting->update($data);

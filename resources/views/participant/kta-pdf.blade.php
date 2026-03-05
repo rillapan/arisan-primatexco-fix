@@ -83,18 +83,6 @@
             width: 60px;
             height: 60px;
         }
-        .kta-footer {
-            margin-top: 5px;
-        }
-        .kta-signature-img {
-            max-height: 25px;
-            margin-bottom: 2px;
-        }
-        .kta-signature-name {
-            font-size: 7pt;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
 
         .kta-back {
             background-image: url('{{ public_path('storage/img/logo.webp') }}');
@@ -151,12 +139,6 @@
             <div class="kta-right">
                 <div class="kta-qr">
                     <img src="https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl={{ $participant->lottery_number }}&choe=UTF-8" class="qr-img">
-                </div>
-                <div class="kta-footer">
-                    @if($setting->signature_image)
-                        <img src="{{ public_path('uploads/kta/' . $setting->signature_image) }}" class="kta-signature-img">
-                    @endif
-                    <div class="kta-signature-name">{{ $setting->signature_name ?? 'TTD PENGURUS' }}</div>
                 </div>
             </div>
         </div>
