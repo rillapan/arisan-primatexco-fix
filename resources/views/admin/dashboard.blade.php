@@ -32,9 +32,14 @@
                 <button type="submit" class="btn btn-sm btn-primary">
                     <i class="fas fa-filter"></i> Filter
                 </button>
-                <a href="{{ route('admin.dashboard.export-pdf', ['month' => $selectedMonth, 'year' => $selectedYear]) }}" class="btn btn-sm btn-danger" target="_blank">
-                    <i class="fas fa-file-pdf"></i> Export PDF
-                </a>
+                <div class="btn-group">
+                    <a href="{{ route('admin.dashboard.export-pdf', ['month' => $selectedMonth, 'year' => $selectedYear]) }}" class="btn btn-sm btn-danger" target="_blank">
+                        <i class="fas fa-file-pdf"></i> Export PDF
+                    </a>
+                    <a href="{{ route('admin.dashboard.export-receipts', ['month' => $selectedMonth, 'year' => $selectedYear]) }}" class="btn btn-sm btn-info text-white" target="_blank">
+                        <i class="fas fa-print"></i> Cetak Semua Kuitansi
+                    </a>
+                </div>
             </form>
         </div>
         <div class="card-body p-0">
@@ -48,6 +53,7 @@
                             <th>Bag/Shift</th>
                             <th>NIK</th>
                             <th>Nilai Lelang</th>
+                            <th class="text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -69,10 +75,15 @@
                                     Rp {{ number_format($result['bid_amount'], 0, ',', '.') }}
                                 </span>
                             </td>
+                            <td class="text-center">
+                                <a href="{{ route('admin.dashboard.export-receipts', ['month' => $selectedMonth, 'year' => $selectedYear, 'winner_id' => $result['winner_id']]) }}" class="btn btn-sm btn-outline-info" target="_blank" title="Cetak Kuitansi">
+                                    <i class="fas fa-print"></i>
+                                </a>
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center py-5">
+                            <td colspan="7" class="text-center py-5">
                                 <div class="empty-state">
                                     <i class="fas fa-inbox"></i><br>
                                     Belum ada hasil lelang untuk periode {{ \Carbon\Carbon::create()->month($selectedMonth)->locale('id')->monthName }} {{ $selectedYear }}

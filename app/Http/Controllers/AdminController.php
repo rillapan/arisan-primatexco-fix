@@ -55,6 +55,7 @@ class AdminController extends Controller
         ->get()
         ->map(function ($winner) {
             return [
+                'winner_id' => $winner->id,
                 'group_name' => $winner->monthlyPeriod->group->name,
                 'lottery_number' => $winner->participant->lottery_number,
                 'participant_name' => $winner->participant->name,
@@ -136,6 +137,43 @@ class AdminController extends Controller
         $pdf = Pdf::loadView('admin.exports.auction-results-pdf', compact('auctionResults', 'title', 'selectedMonth', 'selectedYear', 'monthName'));
         
         return $pdf->download('laporan-pemenang-arisan-'.$selectedMonth.'-'.$selectedYear.'.pdf');
+    }
+
+    public function exportAuctionResultsReceipts(Request $request)
+    {
+        $selectedMonth = (int) $request->input('month', now()->month);
+        $selectedYear = (int) $request->input('year', now()->year);
+        $winnerId = $request->input('winner_id');
+
+        // Get auction results filtered by selected month/year
+        $query = Winner::with([
+            'participant', 
+            'monthlyPeriod.group',
+            'bid'
+        ])
+        ->whereHas('monthlyPeriod', function($q) use ($selectedMonth, $selectedYear) {
+            $q->whereYear('period_start', $selectedYear)
+              ->whereMonth('period_start', $selectedMonth);
+        });
+
+        if ($winnerId) {
+            $query->where('id', $winnerId);
+        }
+
+        $auctionResults = $query->orderBy('created_at', 'desc')->get();
+        
+        if ($auctionResults->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada data pemenang untuk periode yang dipilih.');
+        }
+
+        $monthName = \Carbon\Carbon::create()->month($selectedMonth)->locale('id')->monthName;
+
+        // Custom paper size: 32 cm x 10 cm (width x height)
+        // 1 cm = 28.346 points -> 32 cm = 907.087 points, 10 cm = 283.465 points
+        $pdf = Pdf::loadView('admin.exports.auction-receipts-pdf', compact('auctionResults', 'selectedMonth', 'selectedYear', 'monthName'))
+            ->setPaper([0, 0, 907.087, 283.465]);
+        
+        return $pdf->stream('kuitansi-pemenang-arisan-'.$selectedMonth.'-'.$selectedYear.'.pdf');
     }
 
     public function groups()

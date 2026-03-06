@@ -99,6 +99,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     Route::get('/dashboard/export-pdf', [AdminController::class, 'exportAuctionResultsPdf'])->name('dashboard.export-pdf');
+    Route::get('/dashboard/export-receipts', [AdminController::class, 'exportAuctionResultsReceipts'])->name('dashboard.export-receipts');
     
     // Group management
     Route::get('/groups', [AdminController::class, 'groups'])->name('groups');
