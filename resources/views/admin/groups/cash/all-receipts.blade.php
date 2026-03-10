@@ -161,7 +161,20 @@
                 
                 <div class="signature-container">
                     @if($admin_signature && $admin_signature->ttd)
-                        <img src="{{ public_path('storage/' . $admin_signature->ttd) }}" class="signature-img">
+                        @php
+                            $path = storage_path('app/public/' . $admin_signature->ttd);
+                            $base64 = '';
+                            if (file_exists($path)) {
+                                $type = pathinfo($path, PATHINFO_EXTENSION);
+                                $data = file_get_contents($path);
+                                $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+                            }
+                        @endphp
+                        @if($base64)
+                            <img src="{{ $base64 }}" class="signature-img">
+                        @else
+                            <div style="height: 60px;"></div>
+                        @endif
                     @else
                         <div style="height: 60px;"></div>
                     @endif

@@ -168,10 +168,18 @@ class AdminController extends Controller
 
         $monthName = \Carbon\Carbon::create()->month($selectedMonth)->locale('id')->monthName;
 
-        // Custom paper size: 32 cm x 10 cm (width x height)
-        // 1 cm = 28.346 points -> 32 cm = 907.087 points, 10 cm = 283.465 points
-        $pdf = Pdf::loadView('admin.exports.auction-receipts-pdf', compact('auctionResults', 'selectedMonth', 'selectedYear', 'monthName'))
-            ->setPaper([0, 0, 907.087, 283.465]);
+    // Calculate winner sequence per group (urutan pemenang di kelompok)
+    foreach ($auctionResults as $winner) {
+        $groupId = $winner->monthlyPeriod->group_id;
+        $winnerSequence = Winner::whereHas('monthlyPeriod', function($q) use ($groupId) {
+            $q->where('group_id', $groupId);
+        })->where('created_at', '<=', $winner->created_at)->count();
+        $winner->receipt_sequence = $winnerSequence;
+    }
+
+    // A4 portrait - 3 kuitansi per halaman
+    $pdf = Pdf::loadView('admin.exports.auction-receipts-pdf', compact('auctionResults', 'selectedMonth', 'selectedYear', 'monthName'))
+        ->setPaper('a4', 'portrait');
         
         return $pdf->stream('kuitansi-pemenang-arisan-'.$selectedMonth.'-'.$selectedYear.'.pdf');
     }
