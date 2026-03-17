@@ -3324,44 +3324,6 @@ class AdminController extends Controller
         return redirect()->route('admin.profile')->with('success', 'Profil berhasil diperbarui');
     }
 
-    public function uploadProfilePhoto(Request $request)
-    {
-        $request->validate([
-            'photo' => 'required|image|mimes:jpg,jpeg,png|max:5120', // Max 5MB
-        ]);
-
-        if ($request->hasFile('photo')) {
-            $admin = Auth::guard('admin')->user();
-            $file = $request->file('photo');
-            $filename = time() . '_' . $admin->id . '.webp';
-
-            // Hapus foto lama jika ada
-            if ($admin->profile_photo) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($admin->profile_photo);
-            }
-
-            // Memproses gambar menggunakan Intervention Image v3
-            $manager = new \Intervention\Image\ImageManager(
-                new \Intervention\Image\Drivers\Gd\Driver()
-            );
-            
-            $image = $manager->read($file->getPathname())
-                ->cover(300, 300) // Crop otomatis ke tengah (1:1)
-                ->toWebp(80); // Konversi ke WebP dengan kualitas 80%
-
-            // Simpan ke storage (public disk)
-            \Illuminate\Support\Facades\Storage::disk('public')->put('profiles/' . $filename, (string) $image);
-
-            // Update path di database
-            $admin->update([
-                'profile_photo' => 'profiles/' . $filename
-            ]);
-
-            return back()->with('success', 'Foto profil berhasil diperbarui!');
-        }
-
-        return back()->with('error', 'Gagal mengupload foto. Silakan coba lagi.');
-    }
 
     public function updateParticipant(Request $request, $id)
     {

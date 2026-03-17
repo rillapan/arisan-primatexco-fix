@@ -215,7 +215,6 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
     // Admin Profile
     Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
     Route::put('/profile', [AdminController::class, 'updatePassword'])->name('profile.update');
-    Route::post('/profile/photo', [AdminController::class, 'uploadProfilePhoto'])->name('profile.photo');
 
     // Management (Pengurus) routes
     Route::post('/management', [\App\Http\Controllers\ManagementController::class, 'store'])->name('management.store');
