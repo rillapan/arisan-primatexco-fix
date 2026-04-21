@@ -18,75 +18,14 @@ Route::get('/img/{path}', [\App\Http\Controllers\ImageController::class, 'serve'
     ->where('path', '.*')
     ->name('image.serve');
 
-// Route: FORCE FIX & VERIFY
-Route::get('/force-fix-storage', function () {
-    $target = storage_path('app/public');
-    $link = public_path('storage');
-    
-    echo "<style>body{font-family:sans-serif;padding:20px;}</style>";
-    echo "<h1>🔨 Force Fix Storage</h1>";
-
-    // 1. CLEANUP: Hapus apapun yang ada di public/storage
-    if (file_exists($link)) {
-        if (is_link($link)) {
-            unlink($link);
-            echo "<p>✅ Link lama dihapus.</p>";
-        } elseif (is_dir($link)) {
-            // Coba rename dulu (lebih aman daripada delete recursive)
-            $backup = public_path('storage_hambatan_' . rand(1000,9999));
-            if (rename($link, $backup)) {
-                 echo "<p>✅ Folder 'storage' yang menghalangi berhasil dipindahkan ke: $backup</p>";
-            } else {
-                 echo "<p style='color:red;font-weight:bold;'>❌ GAGAL MEMINDAHKAN FOLDER 'storage'. ADA PERMISSION ERROR.</p>";
-                 echo "<p>Tindakan Manual Diperlukan: Masuk ke File Manager hosting Anda, buka folder 'public', dan rename/hapus folder 'storage' secara manual.</p>";
-                 exit;
-            }
-        }
-    }
-
-    // 2. RECREATE: Buat Link Baru
-    try {
-        symlink($target, $link);
-        echo "<p>✅ Symbolic Link baru berhasil dibuat.</p>";
-    } catch (\Exception $e) {
-        echo "<p style='color:red'>❌ Gagal membuat symlink: " . $e->getMessage() . "</p>";
-    }
-
-    // 3. VERIFY: Cek file update terakhir
-    echo "<hr><h3>📂 Pengecekan File (Verification)</h3>";
-    $uploadDir = $target . '/uploads/participants';
-    
-    if (is_dir($uploadDir)) {
-        $files = scandir($uploadDir, SCANDIR_SORT_DESCENDING); // File terbaru di atas
-        $found = false;
-        
-        echo "<table border='1' cellpadding='5' style='border-collapse:collapse; width:100%'>";
-        echo "<tr style='background:#eee'><th>Nama File (di Server)</th><th>Link Akses (Klik untuk Coba)</th><th>Status</th></tr>";
-        
-        // Cek 5 file terbaru
-        for($i=0; $i<min(5, count($files)); $i++) {
-            $file = $files[$i];
-            if ($file == '.' || $file == '..') continue;
-            
-            $url = url('storage/uploads/participants/' . $file);
-            $found = true;
-            echo "<tr>";
-            echo "<td>$file</td>";
-            echo "<td><a href='$url' target='_blank'>$url</a></td>";
-            echo "<td>(Cek Link)</td>";
-            echo "</tr>";
-        }
-        echo "</table>";
-        
-        if (!$found) echo "<p>Folder uploads/participants kosong.</p>";
-    } else {
-        echo "<p style='color:red'>❌ Folder $uploadDir TIDAK DITEMUKAN.</p>";
-    }
-});
+// Route: storage:link — HANYA untuk admin (proteksi middleware auth:admin)
+// Untuk membuat storage symlink, gunakan: php artisan storage:link
 
 Route::get('/register', [RegistrationController::class, 'index'])->name('register.index');
 Route::get('/register/group/{groupId}', [RegistrationController::class, 'form'])->name('register.form');
-Route::post('/register/group/{groupId}', [RegistrationController::class, 'store'])->name('register.store');
+Route::post('/register/group/{groupId}', [RegistrationController::class, 'store'])
+    ->middleware('throttle:3,5') // ✅ SECURITY: Maks 3 pendaftaran per 5 menit per IP
+    ->name('register.store');
 
 // Authentication routes (dengan rate limiting untuk mencegah brute force)
 Route::get('/login', [AuthController::class, 'showParticipantLoginForm'])->name('login'); // Main Participant Login
@@ -123,7 +62,9 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
     Route::delete('/groups/{groupId}/cash/{monthKey}', [AdminController::class, 'deleteCashMonth'])->name('groups.cash.month.delete');
     // createCashMonth route removed - cash should only be created when creating periods
     Route::post('/groups/{groupId}/cash/{monthKey}/add-installment', [AdminController::class, 'addInstallment'])->name('groups.cash.add.installment');
-    Route::post('/groups/{groupId}/cash/bulk-installment', [AdminController::class, 'bulkInstallmentProcess'])->name('groups.cash.bulk.installment');
+    Route::post('/groups/{groupId}/cash/bulk-installment', [AdminController::class, 'bulkInstallmentProcess'])
+        ->middleware('throttle:10,1') // ✅ SECURITY: Operasi berat, maks 10x per menit
+        ->name('groups.cash.bulk.installment');
     Route::post('/groups/{groupId}/registration/toggle', [AdminController::class, 'toggleRegistration'])->name('groups.registration.toggle');
     Route::get('/payments/{paymentId}/receipt', [AdminController::class, 'generateReceipt'])->name('payments.receipt');
     Route::get('/groups/{groupId}/auction/process', [AdminController::class, 'processAuction'])->name('groups.auction.process');
@@ -141,11 +82,15 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
     Route::get('/groups/{groupId}/participants', [AdminController::class, 'participants'])->name('participants');
     Route::get('/groups/{groupId}/participants/manage', [AdminController::class, 'manageParticipants'])->name('groups.participants.manage');
     Route::get('/participants/{participantId}', [AdminController::class, 'showParticipantDetail'])->name('participants.show');
-    Route::post('/groups/{groupId}/participants/import', [AdminController::class, 'importParticipants'])->name('groups.participants.import');
+    Route::post('/groups/{groupId}/participants/import', [AdminController::class, 'importParticipants'])
+        ->middleware('throttle:5,10') // ✅ SECURITY: Import berat, maks 5x per 10 menit
+        ->name('groups.participants.import');
     Route::delete('/groups/{groupId}/participants/delete-all', [AdminController::class, 'deleteAllParticipants'])->name('groups.participants.delete-all');
     Route::get('/groups/{groupId}/participants/export', [AdminController::class, 'exportParticipants'])->name('groups.participants.export');
     Route::get('/groups/{groupId}/participants/template', [AdminController::class, 'downloadParticipantTemplate'])->name('groups.participants.template');
-    Route::post('/participants/{participantId}/reset-password', [AdminController::class, 'resetParticipantPassword'])->name('participants.reset-password');
+    Route::post('/participants/{participantId}/reset-password', [AdminController::class, 'resetParticipantPassword'])
+        ->middleware('throttle:20,1') // ✅ SECURITY: Maks 20 reset per menit
+        ->name('participants.reset-password');
     Route::post('/participants/{participantId}/approve', [AdminController::class, 'approveParticipant'])->name('participants.approve');
     Route::post('/groups/{groupId}/participants/approve-all', [AdminController::class, 'approveAllParticipants'])->name('groups.participants.approve-all');
     Route::put('/participants/{id}', [AdminController::class, 'updateParticipant'])->name('participants.update');
@@ -226,8 +171,12 @@ Route::prefix('admin')->name('admin.')->middleware('auth:admin')->group(function
 Route::prefix('participant')->name('participant.')->middleware('auth:participant')->group(function () {
     Route::get('/dashboard', [ParticipantController::class, 'dashboard'])->name('dashboard');
     Route::get('/bid', [ParticipantController::class, 'showBidForm'])->name('bid.create');
-    Route::post('/bid', [ParticipantController::class, 'submitBid'])->name('bid.store');
-    Route::post('/bid/store', [ParticipantController::class, 'storeBid'])->name('bid.store.dashboard');
+    Route::post('/bid', [ParticipantController::class, 'submitBid'])
+        ->middleware('throttle:30,1') // ✅ SECURITY: Maks 30 bid per menit
+        ->name('bid.store');
+    Route::post('/bid/store', [ParticipantController::class, 'storeBid'])
+        ->middleware('throttle:30,1')
+        ->name('bid.store.dashboard');
     Route::post('/bid/{bidId}/permanent', [ParticipantController::class, 'makePermanent'])->name('bid.permanent');
     Route::get('/bid/{bidId}/permanent', function() {
         return redirect()->route('participant.bid.create')->with('error', 'Silakan gunakan tombol "Simpan Lelang Permanen" di halaman lelang.');
@@ -238,7 +187,9 @@ Route::prefix('participant')->name('participant.')->middleware('auth:participant
     Route::get('/winners', [ParticipantController::class, 'winners'])->name('winners');
     Route::get('/profile', [ParticipantController::class, 'profile'])->name('profile');
     Route::get('/terms', [ParticipantController::class, 'terms'])->name('terms');
-    Route::put('/profile', [ParticipantController::class, 'updateProfile'])->name('profile.update');
+    Route::put('/profile', [ParticipantController::class, 'updateProfile'])
+        ->middleware('throttle:10,1') // ✅ SECURITY: Maks 10 update profil per menit
+        ->name('profile.update');
     Route::delete('/profile/photo', [ParticipantController::class, 'deletePhoto'])->name('profile.delete-photo');
     Route::get('/auction/{periodId}', [ParticipantController::class, 'viewAuction'])->name('auction.view');
     Route::get('/bukti-angsuran', [ParticipantController::class, 'buktiAngsuran'])->name('bukti.angsuran');
@@ -249,6 +200,4 @@ Route::prefix('participant')->name('participant.')->middleware('auth:participant
     Route::get('/kta', [ParticipantController::class, 'kta'])->name('kta');
     Route::get('/kta/download', [ParticipantController::class, 'downloadKta'])->name('kta.download');
     
-    // DEBUG ROUTE
-    Route::get('/debug-password', [ParticipantController::class, 'debugPasswordForm'])->name('debug.password');
-    Route::post('/debug-password', [ParticipantController::class, 'debugPasswordCheck'])->name('debug.password.check');});
+});

@@ -28,3 +28,14 @@ rr
 **/caddy
 frankenphp
 frankenphp-worker.php
+
+# ============================================================
+# File sensitif — jangan commit ke repository!
+# ============================================================
+db_info.txt
+*.sql
+query
+/arisan-fix
+# Data JSON production (hapus baris ini jika ada config JSON yang diperlukan)
+group2_data.json
+p25_data.json

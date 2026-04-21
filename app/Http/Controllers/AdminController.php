@@ -261,7 +261,7 @@ class AdminController extends Controller
             'id' => 'required|integer|min:1|unique:groups,id',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'max_participants' => 'required|integer',
+            'max_participants' => 'required|integer|min:1|max:500',
             'monthly_installment' => 'required|numeric|min:0',
             'main_prize' => 'required|numeric|min:0',
             'shu' => 'required|numeric|min:0',
@@ -2579,7 +2579,7 @@ class AdminController extends Controller
         $validated = $request->validate([
             'payment_date' => 'required|date',
             'notes' => 'nullable|string',
-            'monthKey' => 'required|string',
+            'monthKey' => ['required', 'string', 'regex:/^\d{4}-\d{2}$/'],
             'monthly_period_id' => 'required|exists:monthly_periods,id',
             'create_next_months' => 'nullable|integer|min:0|max:12'
         ]);
@@ -2804,7 +2804,10 @@ class AdminController extends Controller
 
         foreach ($validated['bids'] as $participantId => $bidAmount) {
                 if ($bidAmount > 0) {
-                    $participant = Participant::find($participantId);
+                    // ✅ SECURITY: Validasi participant harus dari group yang sama (mencegah cross-group IDOR)
+                    $participant = Participant::where('id', $participantId)
+                                             ->where('group_id', $groupId)
+                                             ->first();
                     if ($participant && $participant->has_won) {
                         continue; // Skip winners
                     }
@@ -3125,7 +3128,9 @@ class AdminController extends Controller
             'is_active' => 'boolean'
         ]);
 
-        $data = $request->except(['foto', 'ttd', 'ttd_drawing']);
+        // ✅ SECURITY FIX: Gunakan only() bukan except() untuk mencegah mass assignment
+        // except() membiarkan field arbitrary lolos; only() adalah whitelist eksplisit
+        $data = $request->only(['jabatan', 'nama_pengurus', 'urutan']);
 
         // Handle photo upload with Intervention Image
         if ($request->hasFile('foto')) {
@@ -3169,7 +3174,8 @@ class AdminController extends Controller
             $data['ttd'] = $ttdName;
         }
 
-        $data['is_active'] = $request->has('is_active');
+        // ✅ SECURITY FIX: set is_active secara eksplisit (bukan dari request massal)
+        $data['is_active'] = $request->boolean('is_active');
 
         Saksi::create($data);
 
@@ -3196,7 +3202,8 @@ class AdminController extends Controller
             'is_active' => 'boolean'
         ]);
 
-        $data = $request->except(['foto', 'ttd', 'ttd_drawing']);
+        // ✅ SECURITY FIX: Gunakan only() bukan except() untuk mencegah mass assignment
+        $data = $request->only(['jabatan', 'nama_pengurus', 'urutan']);
 
         // Handle photo upload with Intervention Image
         if ($request->hasFile('foto')) {
@@ -3258,7 +3265,8 @@ class AdminController extends Controller
             $data['ttd'] = $ttdName;
         }
 
-        $data['is_active'] = $request->has('is_active');
+        // ✅ SECURITY FIX: set is_active secara eksplisit
+        $data['is_active'] = $request->boolean('is_active');
 
         $saksi->update($data);
 

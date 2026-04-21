@@ -454,6 +454,26 @@
             
             <!-- Main Content -->
             <div id="contentContainer" class="w-100">
+                {{-- =====================================================
+                     SECURITY BANNER: Paksa Ganti Password Default
+                     Tampil otomatis jika peserta belum pernah ganti password
+                     ===================================================== --}}
+                @if(Auth::guard('participant')->check() && !Auth::guard('participant')->user()->is_password_changed)
+                <div class="alert alert-warning alert-dismissible border-warning border-start border-4 d-flex align-items-start gap-3 mb-3 shadow-sm" role="alert" style="border-radius: 8px;">
+                    <i class="fas fa-shield-alt fa-lg text-warning mt-1 flex-shrink-0"></i>
+                    <div class="flex-grow-1">
+                        <strong>⚠️ Demi Keamanan Akun Anda — Segera Ganti Password Default!</strong>
+                        <p class="mb-0 mt-1 small text-muted">
+                            Anda masih menggunakan password bawaan (No. Undian / NIK). Password ini mudah ditebak.
+                            Segera ubah password Anda agar akun lebih aman.
+                        </p>
+                    </div>
+                    <a href="{{ route('participant.profile') }}#ganti-password" class="btn btn-warning btn-sm fw-bold flex-shrink-0">
+                        <i class="fas fa-key me-1"></i> Ganti Sekarang
+                    </a>
+                </div>
+                @endif
+
                 @yield('content')
             </div>
         </div>

@@ -560,7 +560,14 @@ class ParticipantController extends Controller
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:5120', // Increased to 5MB
             'captured_photo' => 'nullable|string',
             'current_password' => 'required_with:new_password',
-            'new_password' => 'nullable|min:6|confirmed'
+            // ✅ SECURITY: min 8 karakter, harus mengandung huruf besar, kecil, dan angka
+            'new_password'     => [
+                'nullable',
+                'min:8',
+                'confirmed',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
+            ],
+
         ]);
         
         // Handle photo upload
@@ -1046,76 +1053,4 @@ class ParticipantController extends Controller
         return view('participant.documentations.list', compact('participant', 'periodsWithDocs', 'unreadBuktiAngsuranCount'));
     }
 
-    public function debugPasswordForm()
-    {
-        $participant = Auth::guard('participant')->user()->fresh();
-        $dbData = \Illuminate\Support\Facades\DB::table('participants')
-            ->where('id', $participant->id)
-            ->select('password', 'lottery_number')
-            ->first();
-
-        return response()->make('
-            <html>
-            <head>
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-            </head>
-            <body class="p-5">
-                <h1>Debug Password for: ' . $participant->name . '</h1>
-                <p><strong>ID:</strong> ' . $participant->id . '</p>
-                 <p><strong>Lottery Number (as fallback):</strong> ' . $participant->lottery_number . '</p>
-                 <p><strong>Is Password in DB?</strong> ' . (empty($dbData->password) ? 'NO' : 'YES') . '</p>
-                <div class="alert alert-info">
-                    <strong>Hash Preview:</strong> ' . substr($dbData->password, 0, 15) . '...
-                </div>
-                
-                <hr>
-                
-                <form method="POST" action="' . route('participant.debug.password.check') . '">
-                    <input type="hidden" name="_token" value="' . csrf_token() . '">
-                    <div class="mb-3">
-                        <label>Test Password Input:</label>
-                        <input type="text" name="test_password" class="form-control" placeholder="Enter password to check">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Check Password</button>
-                    <a href="' . route('participant.profile') . '" class="btn btn-secondary">Back to Profile</a>
-                </form>
-            </body>
-            </html>
-        ');
-    }
-
-    public function debugPasswordCheck(Request $request)
-    {
-        $participant = Auth::guard('participant')->user()->fresh();
-        $input = $request->test_password;
-        
-        $fresh = \Illuminate\Support\Facades\DB::table('participants')->where('id', $participant->id)->first();
-        
-        $checkHash = \Illuminate\Support\Facades\Hash::check($input, $fresh->password);
-        $checkLottery = ($input === $participant->lottery_number);
-        
-        $msg = "<html><body style='padding:50px; font-family:sans-serif;'>";
-        $msg .= "<h1>Diagnostic Result</h1>";
-        $msg .= "<p>Input was: <strong>" . htmlspecialchars($input) . "</strong></p>";
-        
-        $msg .= "<h3>Check Results:</h3>";
-        $msg .= "<ul>";
-        $msg .= "<li><strong>Matches Database Hash?</strong> " . ($checkHash ? '<span style="color:green; font-weight:bold">YES (MATCH)</span>' : '<span style="color:red; font-weight:bold">NO</span>') . "</li>";
-        $msg .= "<li><strong>Matches Lottery Number (Fallback)?</strong> " . ($checkLottery ? '<span style="color:green; font-weight:bold">YES (MATCH)</span>' : '<span style="color:red; font-weight:bold">NO</span>') . "</li>";
-        $msg .= "</ul>";
-        
-        $msg .= "<hr><h3>What this means:</h3>";
-        if ($checkHash) {
-             $msg .= "<p style='color:green'>The password you entered IS CORRECT according to the database hash.</p>";
-        } elseif ($checkLottery) {
-             $msg .= "<p style='color:orange'>The password matches your Lottery Number. This works as a fallback.</p>";
-        } else {
-             $msg .= "<p style='color:red'>The password is INCORRECT. It matches neither the current database hash nor your lottery number.</p>";
-        }
-        
-        $msg .= "<br><a href='" . route('participant.debug.password') . "'>Try Another Password</a>";
-        $msg .= "</body></html>";
-        
-        return $msg;
-    }
 }

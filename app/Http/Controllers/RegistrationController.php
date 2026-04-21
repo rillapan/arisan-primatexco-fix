@@ -46,11 +46,19 @@ class RegistrationController extends Controller
             ->findOrFail($groupId);
 
         $request->validate([
-            'name' => 'required|string|max:255',
-            'nik' => 'required|string|max:50',
-            'shift' => 'required|string|max:100',
+            'name'          => 'required|string|max:255',
+            'nik'           => [
+                'required',
+                'string',
+                'min:6',
+                'max:20',
+                // ✅ SECURITY: Hanya izinkan alfanumerik, strip, titik
+                // Mencegah XSS dan karakter berbahaya di NIK
+                'regex:/^[A-Za-z0-9\-\.]+$/',
+            ],
+            'shift'         => 'required|string|max:100',
             'account_count' => 'required|integer|min:1|max:10',
-            'agreement' => 'accepted',
+            'agreement'     => 'accepted',
         ]);
 
         // Check if adding this count would exceed max participants
