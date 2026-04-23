@@ -302,64 +302,61 @@
                                         </div>
                                         
                                         <?php
-                                        $highestBid = $periodWithBids->bids->max('bid_amount');
-                                        $highestBidders = $periodWithBids->bids->where('bid_amount', $highestBid);
                                         $winnerCount = $periodWithBids->calculateWinnerCount();
+                                        
+                                        // Retrieve the top N bidders exactly like in startDrawing
+                                        $topBidders = $periodWithBids->bids()
+                                            ->whereHas('participant', function($q) {
+                                                $q->where('is_active', true)->where('has_won', false);
+                                            })
+                                            ->where('bid_amount', '>', 0)
+                                            ->orderBy('bid_amount', 'desc')
+                                            ->orderBy('bid_time', 'asc')
+                                            ->take($winnerCount)
+                                            ->get();
+                                            
+                                        $countTopBidders = $topBidders->count();
+                                        $drawWinnerCount = $winnerCount - $countTopBidders;
                                         ?>
                                         
                                         <div class="row">
                                             <div class="col-md-4">
-                                                <small class="text-muted">Bid Tertinggi:</small>
-                                                <h5 class="text-success">Rp {{ number_format($highestBid, 0, ',', '.') }}</h5>
+                                                <small class="text-muted">Bid Tertinggi Saat Ini:</small>
+                                                <h5 class="text-success">Rp {{ number_format($topBidders->first() ? $topBidders->first()->bid_amount : 0, 0, ',', '.') }}</h5>
                                             </div>
                                             <div class="col-md-4">
                                                 <small class="text-muted">Jumlah Pemenang:</small>
                                                 <h5 class="text-primary">{{ $winnerCount }}</h5>
                                             </div>
                                             <div class="col-md-4">
-                                                <small class="text-muted">Peserta dengan Bid Tertinggi:</small>
-                                                <h5 class="text-warning">{{ $highestBidders->count() }}</h5>
+                                                <small class="text-muted">Peserta dengan {{ $winnerCount }} Bid Tertinggi:</small>
+                                                <h5 class="text-warning">{{ $countTopBidders }}</h5>
                                             </div>
                                         </div>
 
-                                        @if($highestBidders->count() <= $winnerCount)
+                                        @if($drawWinnerCount <= 0)
                                             <div class="alert alert-success mt-3">
                                                 <i class="fas fa-check-circle me-2"></i>
-                                                <strong>Tidak Perlu Undian:</strong> Jumlah peserta dengan bid tertinggi tidak melebihi jumlah pemenang.
+                                                <strong>Otomatis Penuh:</strong> Terdapat cukup peserta dengan lelang untuk menutupi seluruh {{ $winnerCount }} kuota pemenang. Tidak memerlukan undian manual.
                                             </div>
                                         @else
                                             <div class="alert alert-warning mt-3">
                                                 <i class="fas fa-exclamation-triangle me-2"></i>
-                                                <strong>Perlu Undian:</strong> Jumlah peserta dengan bid tertinggi melebihi jumlah pemenang.
+                                                <strong>Perlu Undian:</strong> Jumlah slot pemenang adalah {{ $winnerCount }}, namun peserta lelang baru {{ $countTopBidders }}. Sisa slot ({{ max(0, $drawWinnerCount) }}) perlu diundi.
                                             </div>
                                         @endif
 
                                         <div class="mt-3">
-                                            @if($highestBidders->count() > $winnerCount && ($periodWithBids->status === 'bidding' || $periodWithBids->status === 'drawing'))
-                                                <a href="{{ route('admin.draw.start', $periodWithBids->id) }}" class="btn btn-success btn-lg">
-                                                    <i class="fas fa-play me-2"></i>
-                                                    Mulai Proses Undian
-                                                </a>
-                                            @elseif($highestBidders->count() > $winnerCount && $periodWithBids->status !== 'completed')
-                                                <a href="{{ route('admin.draw.start', $periodWithBids->id) }}" class="btn btn-warning btn-lg">
-                                                    <i class="fas fa-sync me-2"></i>
-                                                    Mulai Undian ({{ $highestBidders->count() }} Peserta)
-                                                </a>
-                                            @elseif($periodWithBids->status === 'bidding')
-                                                <a href="{{ route('admin.draw.start', $periodWithBids->id) }}" class="btn btn-success btn-lg">
-                                                    <i class="fas fa-play me-2"></i>
-                                                    Mulai Proses Undian
-                                                </a>
-                                            @elseif($periodWithBids->status === 'drawing')
-                                                <a href="{{ route('admin.draw.start', $periodWithBids->id) }}" class="btn btn-warning btn-lg">
-                                                    <i class="fas fa-sync me-2"></i>
-                                                    Lanjutkan Proses Undian
-                                                </a>
-                                            @else
+                                            @if($periodWithBids->status === 'completed')
                                                 <button class="btn btn-secondary btn-lg" disabled>
                                                     <i class="fas fa-check me-2"></i>
                                                     Periode Sudah Selesai
                                                 </button>
+                                            @elseif($periodWithBids->status === 'drawing' || $periodWithBids->status === 'bidding')
+                                                <a href="{{ route('admin.draw.start', $periodWithBids->id) }}" class="btn btn-success btn-lg">
+                                                    <i class="fas fa-play me-2"></i>
+                                                    Mulai Proses Penentuan
+                                                </a>
                                             @endif
                                         </div>
                                     </div>

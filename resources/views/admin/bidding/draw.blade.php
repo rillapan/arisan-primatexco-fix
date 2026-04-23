@@ -157,8 +157,9 @@
                                 <h6><i class="fas fa-info-circle me-2"></i>Prosedur Penentuan Pemenang</h6>
                                 <p>Pemenang ditentukan berdasarkan pemberian angka lelang tertinggi.</p>
                                 <ul>
-                                    <li><strong>Apabila hanya terdapat satu peserta dengan angka tertinggi</strong>, maka peserta tersebut dinyatakan sebagai pemenang untuk bulan tersebut.</li>
-                                    <li><strong>Jika terdapat lebih dari satu peserta dengan angka tertinggi yang sama</strong>, maka pemenang akan ditentukan melalui proses undian.</li>
+                                    <li>Pemenang dipilih berdasarkan peserta dengan tawaran tertinggi sesuai dengan jumlah kuota / slot pemenang.</li>
+                                    <li>Apabila terdapat beberapa nilai bid tertinggi yang mencapai kuota pemenang (misalnya diambil 2 terbaik), mereka otomatis menjadi pemenang.</li>
+                                    <li>Jika terdapat nilai bid yang sama (seri) pada batas kuota, prioritas diberikan kepada yang melakukan bid lebih awal.</li>
                                 </ul>
                             </div>
 
@@ -169,9 +170,17 @@
                                 <p><strong>Bid Tertinggi:</strong> Rp {{ number_format($highestBid, 0, ',', '.') }}</p>
                             </div>
                             <div class="col-md-6">
-                                <p><strong>Peserta dengan Bid Sama:</strong> {{ $highestBidders->count() }} orang</p>
-                                <p><strong>Jumlah Pemenang Dibutuhkan:</strong> {{ $winnerCount }} orang</p>
-                                <p><strong>Status:</strong> <span class="badge bg-danger">Perlu Undian</span></p>
+                                <p><strong>Kandidat Bid Tertinggi:</strong> {{ $highestBidders->count() }} orang</p>
+                                <p><strong>Jumlah Pemenang Keseluruhan:</strong> {{ $winnerCount }} orang</p>
+                                <p><strong>Status:</strong> 
+                                    @if($scenarioMode === 'bypass_all') 
+                                        <span class="badge bg-success">Otomatis Menang Semua</span>
+                                    @elseif($scenarioMode === 'auto_some_draw_rest')
+                                        <span class="badge bg-warning text-dark">{{ $autoWinners->count() }} Otomatis Menang, Sisa Diundi</span>
+                                    @elseif($scenarioMode === 'no_bids_draw_all')
+                                        <span class="badge bg-info text-dark">Tidak Ada Lelang, Undi Semua</span>
+                                    @endif
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -437,6 +446,7 @@
                     </div>
                 </div>
 
+                @if($drawWinnerCount > 0)
                 <div class="card mt-4">
                     <div class="card-header bg-danger text-white">
                         <h5 class="mb-0">Spinner Undian</h5>
@@ -445,7 +455,7 @@
                         <div class="spinner-container">
                             <div class="spinner-pointer"></div>
                             @php
-                                $biddersForWheel = $highestBidders->values()->map(function($b, $index) {
+                                $biddersForWheel = $drawPoolBids->values()->map(function($b, $index) {
                                     return [
                                         'index' => $index + 1,
                                         'bid_id' => $b->id,
@@ -466,15 +476,76 @@
                         </div>
                     </div>
                 </div>
+                @endif
+
+                @if($autoWinners->count() > 0)
+                <div class="card mt-4 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fas fa-star me-2"></i>Pemenang Otomatis (Tanpa Undian)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>No. Undian</th>
+                                        <th>Nama</th>
+                                        <th>Shift</th>
+                                        <th>NIK</th>
+                                        <th>Jumlah Bid</th>
+                                        <th>Hadiah yang Diterima</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($autoWinners as $bidder)
+                                    <tr>
+                                        <td>{{ $bidder->participant->lottery_number }}</td>
+                                        <td><strong>{{ $bidder->participant->name }}</strong></td>
+                                        <td>{{ $bidder->participant->shift }}</td>
+                                        <td>{{ $bidder->participant->nik }}</td>
+                                        <td>Rp {{ number_format($bidder->bid_amount, 0, ',', '.') }}</td>
+                                        <td class="text-success">
+                                            <strong>Rp {{ number_format($period->group->main_prize - $bidder->bid_amount, 0, ',', '.') }}</strong>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                @endif
 
                 <div class="card mt-4">
                     <div class="card-header bg-info text-white">
-                        <h5 class="mb-0">Daftar Peserta yang Diundi</h5>
+                        <h5 class="mb-0">
+                            @if($drawWinnerCount > 0)
+                                Daftar Peserta yang Diundi
+                            @else
+                                Konfirmasi Penetapan Pemenang
+                            @endif
+                        </h5>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="{{ route('admin.draw.perform', $period->id) }}" id="winnerForm">
                             @csrf
                             <input type="hidden" id="final_saksi_ids" name="saksi_ids" value="">
+                            
+                            @if($drawWinnerCount > 0)
+                            <div class="alert alert-info">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                    <div class="mb-2 mb-md-0">
+                                        <i class="fas fa-info-circle me-2"></i>Terdapat <strong>{{ $drawWinnerCount }}</strong> slot pemenang yang diperebutkan oleh <strong>{{ $drawPoolBids->count() }}</strong> peserta dari undian.
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <label for="draw_bid_amount" class="me-2 fw-bold text-nowrap">Nilai Bid/Lelang Undian:</label>
+                                        <div class="input-group" style="width: 180px;">
+                                            <span class="input-group-text">Rp</span>
+                                            <input type="number" class="form-control fw-bold" name="draw_bid_amount" id="draw_bid_amount" value="{{ $drawBidAmount }}" min="0" step="1000">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="table-responsive">
                                 <table class="table table-striped">
                                     <thead>
@@ -483,32 +554,28 @@
                                             <th>Nama</th>
                                             <th>Shift</th>
                                             <th>NIK</th>
-                                            <th>Jumlah Bid</th>
-                                            <th>Hadiah yang Diterima</th>
+                                            <th>Jumlah Bid (Anggap)</th>
+                                            <th>Hadiah yang Akan Diterima</th>
                                             <th>Pilih Pemenang</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($highestBidders as $bidder)
+                                        @foreach($drawPoolBids as $bidder)
                                         <tr>
                                             <td>{{ $bidder->participant->lottery_number }}</td>
                                             <td>
                                                 <strong>{{ $bidder->participant->name }}</strong>
-                                                @if($bidder->participant->has_won)
-                                                    <span class="badge bg-warning">Sudah Menang</span>
-                                                @endif
                                             </td>
                                             <td>{{ $bidder->participant->shift }}</td>
                                             <td>{{ $bidder->participant->nik }}</td>
-                                            <td>Rp {{ number_format($bidder->bid_amount, 0, ',', '.') }}</td>
+                                            <td class="draw-bid-display">Rp {{ number_format($bidder->bid_amount, 0, ',', '.') }}</td>
                                             <td class="text-success">
-                                                <strong>Rp {{ number_format($period->group->main_prize - $bidder->bid_amount, 0, ',', '.') }}</strong>
+                                                <strong class="draw-prize-display">Rp {{ number_format($period->group->main_prize - $bidder->bid_amount, 0, ',', '.') }}</strong>
                                             </td>
                                             <td>
                                                 <div class="form-check">
                                                     <input class="form-check-input" type="checkbox" name="winners[]" 
-                                                           value="{{ $bidder->id }}" id="winner_{{ $bidder->id }}"
-                                                           @if($bidder->participant->has_won) disabled @endif>
+                                                           value="{{ $bidder->id }}" id="winner_{{ $bidder->id }}">
                                                     <label class="form-check-label" for="winner_{{ $bidder->id }}">
                                                         Pilih
                                                     </label>
@@ -522,16 +589,20 @@
                             
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle me-2"></i>
-                                <strong>Penting:</strong> Pilih exactly {{ $winnerCount }} pemenang dari daftar di atas.
-                                Peserta yang sudah menang tidak dapat dipilih lagi.
+                                <strong>Penting:</strong> Pilih exactly {{ $drawWinnerCount }} pemenang dari hasil undian di atas!
                             </div>
+                            @else
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle me-2"></i>Semua kuota pemenang ({{ $winnerCount }} orang) berhasil didapatkan secara langsung dari peserta dengan bid tertinggi. Silakan klik "Tetapkan Pemenang" untuk menyimpan hasil.
+                            </div>
+                            @endif
 
                             <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                                 <a href="{{ route('admin.groups.manage', $period->group_id) }}" class="btn btn-secondary">
                                     <i class="fas fa-times me-1"></i>Batal
                                 </a>
-                                <button type="submit" class="btn btn-success" id="submitWinners" disabled>
-                                    <i class="fas fa-trophy me-1"></i>Tentukan Pemenang
+                                <button type="submit" class="btn btn-success" id="submitWinners" {{ $drawWinnerCount > 0 ? 'disabled' : '' }}>
+                                    <i class="fas fa-trophy me-1"></i>Tetapkan Pemenang
                                 </button>
                             </div>
                         </form>
@@ -582,10 +653,10 @@
     <script>
         let isSpinning = false;
         let selectedWinner = null;
-        const winnerCount = {{ $winnerCount }};
-        const totalBidders = {{ $highestBidders->count() }};
-        const winnerReceives = {{ $winnerReceives }};
-        const biddersForWheel = @json($biddersForWheel);
+        const submitDrawWinnerCount = {{ $drawWinnerCount }};
+        const totalBidders = {{ $drawPoolBids->count() }};
+        const winnerReceives = {{ $calculation['winnerTotalReceived'] }};
+        const biddersForWheel = @json($biddersForWheel ?? []);
         let lastWinnerIndex = null;
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -895,7 +966,7 @@
             const checkboxes = document.querySelectorAll('input[name="winners[]"]:checked');
             const submitButton = document.getElementById('submitWinners');
             
-            if (checkboxes.length === winnerCount) {
+            if (checkboxes.length === submitDrawWinnerCount) {
                 submitButton.disabled = false;
             } else {
                 submitButton.disabled = true;
@@ -910,9 +981,9 @@
         // Form validation
         document.getElementById('winnerForm').addEventListener('submit', function(e) {
             const checkboxes = document.querySelectorAll('input[name="winners[]"]:checked');
-            if (checkboxes.length !== winnerCount) {
+            if (submitDrawWinnerCount > 0 && checkboxes.length !== submitDrawWinnerCount) {
                 e.preventDefault();
-                alert(`Anda harus memilih exactly ${winnerCount} pemenang!`);
+                alert(`Anda harus memilih exactly ${submitDrawWinnerCount} pemenang dari daftar undian!`);
                 return;
             }
 
@@ -1031,6 +1102,22 @@
 
         // Initialize filter
         filterSaksi();
+
+        // --- Custom Draw Bid Logic ---
+        const drawBidInput = document.getElementById('draw_bid_amount');
+        if (drawBidInput) {
+            drawBidInput.addEventListener('input', function(e) {
+                const val = parseInt(this.value) || 0;
+                const mainPrize = {{ $period->group->main_prize }};
+                const displayBid = 'Rp ' + val.toLocaleString('id-ID');
+                const displayPrize = 'Rp ' + (mainPrize - val).toLocaleString('id-ID');
+                
+                document.querySelectorAll('.draw-bid-display').forEach(el => el.textContent = displayBid);
+                document.querySelectorAll('.draw-prize-display').forEach(el => el.textContent = displayPrize);
+            });
+            // trigger on load just in case
+            drawBidInput.dispatchEvent(new Event('input'));
+        }
     </script>
 </body>
 </html>

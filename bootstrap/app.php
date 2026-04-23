@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Global middleware - berlaku untuk semua request
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         $middleware->append(\App\Http\Middleware\ForceHttps::class);
+        $middleware->prepend(\App\Http\Middleware\MaintenanceMode::class);
         
         // Alias untuk throttle sudah built-in di Laravel 11
     })
@@ -37,3 +38,5 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->withInput($request->except('password'));
         });
     })->create();
+
+

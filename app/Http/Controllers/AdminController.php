@@ -483,114 +483,106 @@ class AdminController extends Controller
         return view('admin.bidding.index', compact('period', 'bids'));
     }
 
+    private function getOrCreateBaseBids($period, $excludeParticipantIds = []) {
+        $eligibleParticipants = \App\Models\Participant::where('group_id', $period->group_id)
+            ->where('is_active', true)
+            ->where('has_won', false)
+            ->whereNotIn('id', $excludeParticipantIds)
+            ->get();
+            
+        $poolBids = collect();
+        foreach ($eligibleParticipants as $p) {
+            $bid = \App\Models\Bid::firstOrCreate(
+                ['monthly_period_id' => $period->id, 'participant_id' => $p->id],
+                ['bid_amount' => 0, 'status' => 'submitted', 'bid_time' => now(), 'is_permanent' => false]
+            );
+            $bid->load('participant');
+            $poolBids->push($bid);
+        }
+        return $poolBids;
+    }
+
     public function startDrawing($periodId)
     {
         $period = MonthlyPeriod::with(['group', 'bids.participant', 'saksis'])->findOrFail($periodId);
- 
-        // Hanya bid dari peserta AKTIF yang BELUM MENANG
-        // Bid valid (> 0) dianggap ikut lelang
-        $highestBid = $period->bids()
+        $winnerCount = $period->calculateWinnerCount();
+        
+        $eligibleBids = $period->bids()
             ->whereHas('participant', function($q) {
                 $q->where('is_active', true)->where('has_won', false);
             })
             ->where('bid_amount', '>', 0)
-            ->max('bid_amount');
- 
-        if ($highestBid === null) {
-            return redirect()->back()->with('error', 'Belum ada bid/lelang yang masuk dari peserta aktif periode ini.');
-        }
- 
-        $highestBidders = $period->bids()
-            ->where('bid_amount', $highestBid)
-            ->whereHas('participant', function($q) {
-                $q->where('is_active', true)->where('has_won', false);
-            })
+            ->orderBy('bid_amount', 'desc')
+            ->orderBy('bid_time', 'asc') // Sekunder: siapa lebih cepat
             ->with('participant')
             ->get();
- 
-        // Determine winner count based on cash balance (1 or 2 winners)
-        $winnerCount = $period->calculateWinnerCount();
- 
-        if ($highestBidders->count() < $winnerCount) {
-            return redirect()->back()->with(
-                'error',
-                "Bid tertinggi hanya {$highestBidders->count()} peserta, tetapi periode ini butuh {$winnerCount} pemenang. Pastikan minimal {$winnerCount} peserta memasukkan bid tertinggi yang sama."
-            );
-        }
 
-        // 1) Jika hanya 1 orang bid tertinggi dan periode butuh 1 pemenang -> langsung menang
-        if ($highestBidders->count() == 1 && $winnerCount == 1) {
-            $bid = $highestBidders->first();
-            $finalPrize = $period->group->main_prize - $bid->bid_amount;
+        $autoWinners = collect();
+        $drawPoolBids = collect();
+        $drawWinnerCount = $winnerCount;
+        $drawBidAmount = 0;
 
-            Winner::create([
-                'monthly_period_id' => $period->id,
-                'participant_id' => $bid->participant_id,
-                'bid_id' => $bid->id,
-                'main_prize' => $period->group->main_prize,
-                'bid_amount' => $bid->bid_amount,
-                'final_prize' => $finalPrize,
-                'needs_draw' => false,
-                'draw_time' => now()
-            ]);
-
-            $bid->participant->update(['has_won' => true, 'won_at' => now()]);
-
-            $remainingCash = $period->calculateRemainingCash($highestBid);
-            $period->update([
-                'remaining_cash' => $remainingCash,
-                'status' => 'completed'
-            ]);
-
-            return redirect()->route('admin.bidding', $periodId)
-                ->with('success', 'Pemenang ditentukan: ' . $bid->participant->name . ' dengan bid tertinggi Rp ' . number_format($bid->bid_amount, 0, ',', '.'));
-        }
-
-        // 2) Jika jumlah peserta bid tertinggi sama dengan jumlah pemenang yang dibutuhkan DAN jumlah pemenang > 1 -> langsung menang semua
-        if ($highestBidders->count() == $winnerCount && $winnerCount > 1) {
-            foreach ($highestBidders as $bid) {
-                $finalPrize = $period->group->main_prize - $bid->bid_amount;
-
-                Winner::create([
-                    'monthly_period_id' => $period->id,
-                    'participant_id' => $bid->participant_id,
-                    'bid_id' => $bid->id,
-                    'main_prize' => $period->group->main_prize,
-                    'bid_amount' => $bid->bid_amount,
-                    'final_prize' => $finalPrize,
-                    'needs_draw' => false,
-                    'draw_time' => now()
-                ]);
-
-                $bid->participant->update(['has_won' => true, 'won_at' => now()]);
+        $groupedBids = collect();
+        foreach ($eligibleBids as $bid) {
+            $amount = (string)$bid->bid_amount;
+            if (!$groupedBids->has($amount)) {
+                $groupedBids->put($amount, collect());
             }
-
-            $remainingCash = $period->calculateRemainingCash($highestBid);
-            $period->update([
-                'remaining_cash' => $remainingCash,
-                'status' => 'completed'
-            ]);
-
-            return redirect()->route('admin.bidding', $periodId)
-                ->with('success', "Pemenang ditentukan langsung dari bid tertinggi Rp " . number_format($highestBid, 0, ',', '.') . " (" . $winnerCount . " pemenang)");
+            $groupedBids->get($amount)->push($bid);
         }
 
-        // 3) Jika lebih dari 1 orang bid tertinggi sama -> mereka akan diundi
+        foreach ($groupedBids as $amount => $bidsInGroup) {
+            if ($drawWinnerCount == 0) break;
 
-        // Calculate values for the view
+            if ($bidsInGroup->count() <= $drawWinnerCount) {
+                foreach ($bidsInGroup as $b) {
+                    $autoWinners->push($b);
+                }
+                $drawWinnerCount -= $bidsInGroup->count();
+            } else {
+                $drawPoolBids = $bidsInGroup;
+                $drawBidAmount = (float)$amount;
+                break;
+            }
+        }
+
+        if ($drawWinnerCount > 0 && $drawPoolBids->isEmpty()) {
+            $drawPoolBids = $this->getOrCreateBaseBids($period, $autoWinners->pluck('participant_id')->toArray());
+            $drawBidAmount = 0;
+        }
+
+        $highestBidders = $autoWinners->merge($drawPoolBids);
+        $highestBid = $eligibleBids->isEmpty() ? 0 : $eligibleBids->first()->bid_amount;
+        
+        $scenarioMode = '';
+        if ($autoWinners->count() == $winnerCount) {
+            $scenarioMode = 'bypass_all';
+            $drawPoolBids = collect();
+            $drawWinnerCount = 0;
+        } else if ($autoWinners->count() > 0 || $drawBidAmount > 0) {
+            $scenarioMode = 'auto_some_draw_rest';
+        } else {
+            $scenarioMode = 'no_bids_draw_all';
+        }
+
+        // Menghindari undian jika targetnya tidak mungkin dipenuhi
+        if ($drawWinnerCount > 0 && $drawPoolBids->count() < $drawWinnerCount) {
+            return redirect()->back()->with('error', 'Jumlah peserta aktif yang belum menang tidak cukup untuk mengisi sisa ' . $drawWinnerCount . ' slot pemenang.');
+        }
+
         $participantCount = $period->group->participants()->where('is_active', true)->count();
         $installmentAmount = $period->group->monthly_installment;
         $grossDeposit = $participantCount * $installmentAmount;
         $accumulatedCash = $period->previous_cash_balance;
-        $adminFee = $period->group->shu; // Assuming this is the fixed admin fee
+        $adminFee = $period->group->shu; 
         $netContribution = ($grossDeposit + $accumulatedCash) - $adminFee;
         
-        $bidValue = $highestBid;
-        $currentFund = $netContribution + $bidValue; // Dana Saat Ini
         $mainPrize = $period->group->main_prize;
-        $netRemainingPeriod = $currentFund - $mainPrize; // Sisa Bersih Periode Ini
         
-        // Determine the reference month (previous month of period start)
+        $expectedTotalBids = $autoWinners->sum('bid_amount') + ($drawBidAmount * $drawWinnerCount);
+        $currentFund = $netContribution + $expectedTotalBids;
+        $netRemainingPeriod = $currentFund - ($mainPrize * $winnerCount); 
+        
         $periodStart = \Carbon\Carbon::parse($period->period_start);
         $referenceMonthDate = $periodStart->copy()->subMonth();
         $referenceMonthName = $referenceMonthDate->locale('id')->monthName . ' ' . $referenceMonthDate->year;
@@ -602,85 +594,130 @@ class AdminController extends Controller
             'accumulatedCash' => $accumulatedCash,
             'adminFee' => $adminFee,
             'netContribution' => $netContribution,
-            'bidValue' => $bidValue,
+            'bidValue' => $drawBidAmount,
             'currentFund' => $currentFund,
             'mainPrize' => $mainPrize,
             'netRemainingPeriod' => $netRemainingPeriod,
             'referenceMonthName' => $referenceMonthName,
-            'winnerTotalReceived' => $mainPrize - $bidValue,
-            'totalCashRunning' => $accumulatedCash + $netRemainingPeriod // Lit. Formula
+            'winnerTotalReceived' => $mainPrize - $drawBidAmount,
+            'totalCashRunning' => $accumulatedCash + $netRemainingPeriod 
         ];
 
-        // Fetch participants who are already in the Saksi registry to exclude them
         $alreadyWitnessParticipantIds = \App\Models\Saksi::whereNotNull('participant_id')->pluck('participant_id')->toArray();
-
-        // Fetch all active participants as eligible witnesses, excluding those who are already witnesses
         $eligibleWitnesses = \App\Models\Participant::with('group')
             ->where('is_active', true)
             ->whereNotIn('id', $alreadyWitnessParticipantIds)
             ->orderBy('name')
             ->get();
 
-        return view('admin.bidding.draw', compact('period', 'highestBidders', 'winnerCount', 'highestBid', 'calculation', 'eligibleWitnesses'));
+        return view('admin.bidding.draw', compact(
+            'period', 
+            'highestBidders', // For legacy view data
+            'winnerCount', 
+            'highestBid', 
+            'calculation', 
+            'eligibleWitnesses',
+            'scenarioMode',
+            'autoWinners',
+            'drawPoolBids',
+            'drawWinnerCount',
+            'drawBidAmount'
+        ));
     }
 
     public function performDraw(Request $request, $periodId)
     {
         $period = MonthlyPeriod::findOrFail($periodId);
-        $selectedWinners = $request->input('winners', []);
         
-        // Get highest valid bid (>0) from active non-winners
-        $highestBid = $period->bids()
+        $winnerCount = $period->calculateWinnerCount();
+        
+        $eligibleBids = $period->bids()
             ->whereHas('participant', function($q) {
                 $q->where('is_active', true)->where('has_won', false);
             })
             ->where('bid_amount', '>', 0)
-            ->max('bid_amount');
-
-        if ($highestBid === null) {
-            return redirect()->back()->with('error', 'Belum ada bid/lelang yang masuk dari peserta aktif periode ini.');
-        }
-
-        $highestBidders = $period->bids()
-            ->where('bid_amount', $highestBid)
-            ->whereHas('participant', function($q) {
-                $q->where('is_active', true)->where('has_won', false);
-            })
+            ->orderBy('bid_amount', 'desc')
+            ->orderBy('bid_time', 'asc')
+            ->with('participant')
             ->get();
-        
-        // Validate that we're selecting from highest bidders only
-        $winnerCount = $period->calculateWinnerCount();
-        $selectedWinnerIds = array_intersect($selectedWinners, $highestBidders->pluck('id')->toArray());
-        
-        if (count($selectedWinnerIds) != $winnerCount) {
-            return redirect()->back()->with('error', "Harap pilih exactly {$winnerCount} pemenang dari bid tertinggi.");
+
+        $autoWinners = collect();
+        $drawWinnerCount = $winnerCount;
+
+        $groupedBids = collect();
+        foreach ($eligibleBids as $bid) {
+            $amount = (string)$bid->bid_amount;
+            if (!$groupedBids->has($amount)) {
+                $groupedBids->put($amount, collect());
+            }
+            $groupedBids->get($amount)->push($bid);
         }
+
+        foreach ($groupedBids as $amount => $bidsInGroup) {
+            if ($drawWinnerCount == 0) break;
+
+            if ($bidsInGroup->count() <= $drawWinnerCount) {
+                foreach ($bidsInGroup as $b) {
+                    $autoWinners->push($b);
+                }
+                $drawWinnerCount -= $bidsInGroup->count();
+            } else {
+                break;
+            }
+        }
+
+        $selectedDrawWinners = $request->input('winners', []);
         
-        $totalPrizes = 0;
-        foreach ($highestBidders as $bid) {
-            $isWinner = in_array($bid->id, $selectedWinnerIds);
-            
-            if ($isWinner) {
-                $finalPrize = $period->group->main_prize - $bid->bid_amount;
-                $totalPrizes += $finalPrize;
+        if (count($selectedDrawWinners) != $drawWinnerCount) {
+            return redirect()->back()->with('error', "Harap pilih {$drawWinnerCount} pemenang dari daftar undian.");
+        }
+
+        // Process auto winners (Bypass Draw)
+        foreach ($autoWinners as $bid) {
+            $finalPrize = $period->group->main_prize - $bid->bid_amount;
+            Winner::create([
+                'monthly_period_id' => $period->id,
+                'participant_id' => $bid->participant_id,
+                'bid_id' => $bid->id,
+                'main_prize' => $period->group->main_prize,
+                'bid_amount' => $bid->bid_amount,
+                'final_prize' => $finalPrize,
+                'needs_draw' => false,
+                'draw_time' => now()
+            ]);
+            $bid->participant->update(['has_won' => true, 'won_at' => now()]);
+        }
+
+        // Process selected draw winners
+        $customDrawBid = $request->input('draw_bid_amount', 0);
+        $totalDrawBids = 0;
+        if ($drawWinnerCount > 0) {
+            $drawnBids = \App\Models\Bid::whereIn('id', $selectedDrawWinners)->get();
+            foreach ($drawnBids as $bid) {
+                $bid->update(['bid_amount' => $customDrawBid]);
                 
+                $finalPrize = $period->group->main_prize - $customDrawBid;
                 Winner::create([
                     'monthly_period_id' => $period->id,
                     'participant_id' => $bid->participant_id,
                     'bid_id' => $bid->id,
                     'main_prize' => $period->group->main_prize,
-                    'bid_amount' => $bid->bid_amount,
+                    'bid_amount' => $customDrawBid,
+                    'finalPrize' => $finalPrize, // wait, it was final_prize
                     'final_prize' => $finalPrize,
                     'needs_draw' => true,
                     'draw_time' => now()
                 ]);
-                
                 $bid->participant->update(['has_won' => true, 'won_at' => now()]);
+                $totalDrawBids += $customDrawBid;
             }
         }
+
+        // Calculate remaining cash using the average expected total bid per winner
+        $finalTotalBidAmount = $autoWinners->sum('bid_amount') + $totalDrawBids;
+        $averageBidPerWinner = $winnerCount > 0 ? ($finalTotalBidAmount / $winnerCount) : 0;
+        $remainingCash = $period->calculateRemainingCash($averageBidPerWinner);
         
-        // Calculate remaining cash based on winner count and bid amount
-        $remainingCash = $period->calculateRemainingCash($highestBid);
         $period->update([
             'remaining_cash' => $remainingCash,
             'status' => 'completed'
@@ -692,13 +729,10 @@ class AdminController extends Controller
             $participantIds = explode(',', $saksiIdsInput);
             $saksiIdsToSync = [];
             
-            // Get or Create Position "Saksi"
             $position = Position::firstOrCreate(['name' => 'Saksi'], ['description' => 'Saksi dari Peserta']);
 
             foreach ($participantIds as $pId) {
-                // Check if this participant already has a Saksi record
                 $saksi = Saksi::where('participant_id', $pId)->first();
-                
                 if (!$saksi) {
                     $participant = \App\Models\Participant::with('group')->find($pId);
                     if ($participant) {
@@ -715,13 +749,11 @@ class AdminController extends Controller
                     $saksiIdsToSync[] = $saksi->id;
                 }
             }
-            
-            // Sync with Monthly Period
             $period->saksis()->sync($saksiIdsToSync);
         }
         
         return redirect()->route('admin.groups.manage', $period->group_id)
-            ->with('success', "Undian selesai. {$winnerCount} pemenang telah ditentukan dari bid tertinggi Rp " . number_format($highestBid, 0, ',', '.'));
+            ->with('success', "Proses pemenang berhasil diselesaikan.");
     }
 
     public function showPeriod($id)

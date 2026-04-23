@@ -575,6 +575,22 @@
                     .catch(err => console.log('Service Worker registration failed', err));
             });
         }
+
+        // Global prevention for number inputs to block ArrowUp/ArrowDown and scroll wheel
+        document.addEventListener('keydown', function(e) {
+            if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                }
+            }
+        });
+        document.addEventListener('wheel', function(e) {
+            if (e.target.tagName === 'INPUT' && e.target.type === 'number') {
+                if (document.activeElement === e.target) {
+                    e.preventDefault();
+                }
+            }
+        }, { passive: false });
     </script>
     @stack('scripts')
 </body>
